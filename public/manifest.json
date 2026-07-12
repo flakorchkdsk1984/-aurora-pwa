@@ -1,0 +1,23 @@
+{
+  "short_name": "Aurora PWA",
+  "name": "Aurora Agent PWA",
+  "description": "Agente inteligente de aprendizaje, autonomía y habilidades digitales para Aurora",
+  "icons": [
+    {
+      "src": "logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#eef2f3",
+  "theme_color": "#0284c7",
+  "display": "standalone",
+  "orientation": "portrait-primary"
+}
