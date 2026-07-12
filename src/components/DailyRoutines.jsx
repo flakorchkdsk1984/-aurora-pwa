@@ -29,7 +29,7 @@ const ROUTINE_TEMPLATES = [
   }
 ];
 
-export default function DailyRoutines({ settings, onBack }) {
+export default function DailyRoutines({ settings, onBack, onEarnSticker }) {
   const [selectedRoutine, setSelectedRoutine] = useState(ROUTINE_TEMPLATES[0]);
   const [firstDone, setFirstDone] = useState(false);
   const [afterDone, setAfterDone] = useState(false);
@@ -66,6 +66,10 @@ export default function DailyRoutines({ settings, onBack }) {
       success: true,
       durationMs: Date.now() - startTime
     });
+
+    if (onEarnSticker) {
+      onEarnSticker();
+    }
   };
 
   const speakActiveStep = () => {

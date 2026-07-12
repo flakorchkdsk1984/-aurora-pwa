@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { speak } from './TTSHelper';
 import { saveLog } from '../db';
 
-export default function MouseTraining({ settings, onBack }) {
+export default function MouseTraining({ settings, onBack, onEarnSticker }) {
   const [level, setLevel] = useState(1);
   const [starPosition, setStarPosition] = useState({ top: '50%', left: '50%' });
   const [currentAnimal, setCurrentAnimal] = useState({ emoji: '🐶', name: 'perrito' });
@@ -160,6 +160,10 @@ export default function MouseTraining({ settings, onBack }) {
     }, 1200);
 
     handleScore(true);
+
+    if (onEarnSticker) {
+      onEarnSticker();
+    }
 
     setTimeout(() => {
       resetActivity();

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { speak } from './TTSHelper';
 import { saveLog } from '../db';
 
-export default function PrevocationalTraining({ settings, onBack }) {
+export default function PrevocationalTraining({ settings, onBack, onEarnSticker }) {
   const [subGame, setSubGame] = useState('menu'); // 'menu', 'sorting', 'matching', 'simulation'
   const [isCelebrated, setIsCelebrated] = useState(false);
   const [celebrationText, setCelebrationText] = useState('');
@@ -50,6 +50,10 @@ export default function PrevocationalTraining({ settings, onBack }) {
       success: true,
       durationMs: Date.now() - startTime
     });
+
+    if (onEarnSticker) {
+      onEarnSticker();
+    }
 
     setTimeout(() => {
       setIsCelebrated(false);

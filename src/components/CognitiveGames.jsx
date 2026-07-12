@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { speak } from './TTSHelper';
 import { saveLog } from '../db';
 
-export default function CognitiveGames({ settings, onBack }) {
+export default function CognitiveGames({ settings, onBack, onEarnSticker }) {
   const [subGame, setSubGame] = useState('menu'); // 'menu', 'classification', 'memory', 'sequences'
   const [isCelebrated, setIsCelebrated] = useState(false);
   const [celebrationText, setCelebrationText] = useState('');
@@ -54,6 +54,10 @@ export default function CognitiveGames({ settings, onBack }) {
       success: true,
       durationMs: Date.now() - startTime
     });
+
+    if (onEarnSticker) {
+      onEarnSticker();
+    }
 
     setTimeout(() => {
       setIsCelebrated(false);
