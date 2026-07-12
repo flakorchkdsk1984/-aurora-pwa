@@ -2074,3 +2074,20 @@ input:checked + .slider:before {
   color: var(--text-muted);
   font-weight: 600;
 }
+
+/* DIGITAL ILLITERACY ACCESSIBILITY GUIDE */
+.illiteracy-finger-guide {
+  position: absolute;
+  top: -30px;
+  right: -10px;
+  font-size: 6rem;
+  z-index: 50;
+  pointer-events: none;
+  animation: fingerTap 0.6s infinite alternate;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+
+@keyframes fingerTap {
+  0% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(20px) scale(0.85); }
+}

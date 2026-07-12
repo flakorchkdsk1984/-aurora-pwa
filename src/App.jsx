@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getSetting, saveSetting, initDB } from './db';
 import { speak } from './components/TTSHelper';
 import MouseTraining from './components/MouseTraining';
@@ -11,59 +11,53 @@ import ParentDashboard from './components/ParentDashboard';
 import CelebrationConfetti from './components/CelebrationConfetti';
 
 const STICKER_POOL = [
-  { emoji: '🦄', name: 'unicornio mágico' },
-  { emoji: '🦖', name: 'dinosaurio verde' },
-  { emoji: '🎈', name: 'globo de colores' },
-  { emoji: '🍦', name: 'helado dulce' },
-  { emoji: '🚀', name: 'cohete espacial' },
-  { emoji: '🧸', name: 'osito de felpa' },
+  { emoji: '🦄', name: 'unicornio' },
+  { emoji: '🦖', name: 'dinosaurio' },
+  { emoji: '🎈', name: 'globo' },
+  { emoji: '🍦', name: 'helado' },
+  { emoji: '🚀', name: 'cohete' },
+  { emoji: '🧸', name: 'osito' },
   { emoji: '🎨', name: 'paleta de pintura' },
-  { emoji: '🐱', name: 'gatito tierno' },
-  { emoji: '🍓', name: 'frutilla jugosa' },
-  { emoji: '🐬', name: 'delfín saltarín' },
-  { emoji: '👑', name: 'corona real' },
-  { emoji: '🍩', name: 'dona sabrosa' }
-];
-
-const COPITO_PHRASES = [
-  '¡Hola Aurora! ¡Me alegra mucho verte!',
-  '¡Lo estás haciendo súper bien, sigue adelante!',
-  '¡Qué inteligente eres! Me encanta jugar contigo.',
-  '¿Vamos a ganar otra calcomanía para tu álbum?',
-  '¡Eres genial, Aurora!',
-  '¡Tómate tu tiempo, lo estás haciendo fantástico!'
+  { emoji: '🐱', name: 'gatito' },
+  { emoji: '🍓', name: 'frutilla' },
+  { emoji: '🐬', name: 'delfín' },
+  { emoji: '👑', name: 'corona' },
+  { emoji: '🍩', name: 'dona' }
 ];
 
 export default function App() {
   const [activeModule, setActiveModule] = useState('home'); 
   const [settings, setSettings] = useState({
     autoAdapt: true,
-    speechRate: 0.85,
+    speechRate: 0.75, // Slower default speed for beginners
     overloadReduction: false
   });
   const [showParentGate, setShowParentGate] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   
-  // Gamification States
+  // Gamification & Accessibility States
   const [stickers, setStickers] = useState([]);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [copitoSpeech, setCopitoSpeech] = useState('¡Hola Aurora! ¿A qué jugamos hoy?');
+  const [copitoSpeech, setCopitoSpeech] = useState('¡Hola! Toca un dibujo grande para empezar.');
   const [lastEarnedSticker, setLastEarnedSticker] = useState(null);
+  
+  // Digital Illiteracy Help States
+  const [showHomeFinger, setShowHomeFinger] = useState(false);
+  const idleTimer = useRef(null);
 
   useEffect(() => {
     const setup = async () => {
       try {
         await initDB();
         const autoAdapt = await getSetting('autoAdapt', true);
-        const speechRate = await getSetting('speechRate', 0.85);
+        const speechRate = await getSetting('speechRate', 0.75); // Slow down speech
         const overloadReduction = await getSetting('overloadReduction', false);
         setSettings({ autoAdapt, speechRate, overloadReduction });
 
-        // Load stickers
         const savedStickers = await getSetting('stickers', []);
         setStickers(savedStickers);
       } catch (e) {
-        console.error('Failed to init app:', e);
+        console.error(e);
       }
     };
     setup();
@@ -73,32 +67,56 @@ export default function App() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Warm-up greeting for Aurora
-    speak('¡Hola Aurora! Qué lindo verte hoy. ¿A qué quieres jugar?', 0.85);
+    // Initial greeting loop
+    speakGreeting();
+    resetIdleTimer();
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      clearTimeout(idleTimer.current);
     };
-  }, []);
+  }, [activeModule]);
+
+  const speakGreeting = () => {
+    speak('¡Hola! Presiona uno de los dibujos grandes con tu dedo o el mouse para empezar a jugar.', settings.speechRate);
+  };
+
+  const resetIdleTimer = () => {
+    clearTimeout(idleTimer.current);
+    setShowHomeFinger(false);
+
+    if (activeModule === 'home') {
+      idleTimer.current = setTimeout(() => {
+        // Show visual finger helper and repeat voice instructions if user is idle for 8s
+        setShowHomeFinger(true);
+        speak('¿Sigues ahí? Presiona el primer botón azul para aprender a mover el mouse.', settings.speechRate);
+        
+        // Loop prompt every 12 seconds if they stay idle
+        idleTimer.current = setInterval(() => {
+          speak('Toca el dibujo que tiene la flecha amarilla encima.', settings.speechRate);
+        }, 12000);
+      }, 8000);
+    }
+  };
 
   const handleModuleChange = (mod) => {
     setActiveModule(mod);
-    setCopitoSpeech('¡Diviértete mucho!');
+    clearTimeout(idleTimer.current);
     
     if (mod === 'mouse') {
-      speak('Vamos a entrenar el mouse', settings.speechRate);
+      speak('Vamos a jugar con el mouse. Mueve la manito.', settings.speechRate);
     } else if (mod === 'comm') {
-      speak('Abriendo tablero de comunicación', settings.speechRate);
+      speak('Abriendo tablero de comunicación. Toca los dibujos para hablar.', settings.speechRate);
     } else if (mod === 'routines') {
-      speak('Rutinas diarias. ¿Qué hacemos primero y después?', settings.speechRate);
+      speak('Rutinas. ¿Qué hacemos primero y qué hacemos después?', settings.speechRate);
     } else if (mod === 'cognitive') {
-      speak('Vamos a jugar y pensar', settings.speechRate);
+      speak('Vamos a jugar y pensar con cartas y dibujos.', settings.speechRate);
     } else if (mod === 'prevocational') {
-      speak('Habilidades de oficina', settings.speechRate);
+      speak('Vamos a aprender trabajos en el computador.', settings.speechRate);
     } else if (mod === 'home') {
-      speak('Volver a la pantalla principal', settings.speechRate);
-      setCopitoSpeech('¡Bien hecho! Mira tu colección.');
+      speak('Volviste al inicio. Elige otro dibujo.', settings.speechRate);
+      setCopitoSpeech('¡Muy bien hecho! Mira tu premio abajo.');
     }
   };
 
@@ -107,12 +125,8 @@ export default function App() {
     setActiveModule('dashboard');
   };
 
-  // Gamification: Earn sticker trigger
   const handleEarnSticker = async () => {
-    // Pick a random sticker
     const randomSticker = STICKER_POOL[Math.floor(Math.random() * STICKER_POOL.length)];
-    
-    // Add sticker (allow duplicates or collect unique)
     const updatedStickers = [...stickers, randomSticker];
     setStickers(updatedStickers);
     setLastEarnedSticker(randomSticker);
@@ -123,15 +137,13 @@ export default function App() {
       console.error(e);
     }
 
-    // Trigger celebration effects
     setShowConfetti(true);
     setCopitoSpeech(`¡Ganaste un ${randomSticker.name}!`);
     
     setTimeout(() => {
-      speak(`¡Espectacular! Ganaste una calcomanía de ${randomSticker.name} para tu colección.`, settings.speechRate);
+      speak(`¡Qué feliz estoy! Ganaste una calcomanía de ${randomSticker.name}.`, settings.speechRate);
     }, 1500);
 
-    // Reset confetti after animation
     setTimeout(() => {
       setShowConfetti(false);
       setLastEarnedSticker(null);
@@ -139,35 +151,29 @@ export default function App() {
   };
 
   const clickSticker = (sticker) => {
-    speak(`Tu calcomanía de ${sticker.name}`, settings.speechRate);
+    speak(`Esta es tu calcomanía de ${sticker.name}`, settings.speechRate);
     setCopitoSpeech(`¡Ese es un ${sticker.name}!`);
   };
 
-  const clickCopito = () => {
-    const phrase = COPITO_PHRASES[Math.floor(Math.random() * COPITO_PHRASES.length)];
-    setCopitoSpeech(phrase);
-    speak(phrase, settings.speechRate);
-  };
-
   return (
-    <div className={`app-shell ${settings.overloadReduction ? 'reduce-motion' : ''}`}>
-      {/* High-performance Confetti Particle System */}
+    <div 
+      className={`app-shell ${settings.overloadReduction ? 'reduce-motion' : ''}`}
+      onClick={resetIdleTimer} // Any click resets the help prompt timer
+    >
       <CelebrationConfetti active={showConfetti} />
 
-      {/* Offline Alert Bar */}
       {isOffline && (
         <div className="offline-banner">
-          <span>📶 Estás jugando sin Internet (Modo Offline activo)</span>
+          <span>📶 Estás jugando sin Internet (Funciona offline)</span>
         </div>
       )}
 
-      {/* Award Visual Banner Overlay */}
       {lastEarnedSticker && (
         <div className="sticker-award-overlay">
           <div className="sticker-award-card anim-bounce">
             <span className="award-emoji">{lastEarnedSticker.emoji}</span>
-            <h2>¡Calcomanía Ganada!</h2>
-            <p>Conseguiste un {lastEarnedSticker.name}</p>
+            <h2>¡Ganaste un premio!</h2>
+            <p>¡Buen trabajo!</p>
           </div>
         </div>
       )}
@@ -178,19 +184,16 @@ export default function App() {
             <div className="welcome-text">
               <span className="star-icon anim-spin">⭐</span>
               <h1>¡Hola Aurora!</h1>
-              <p>Elige una actividad para empezar a jugar y aprender</p>
+              <p>Presiona el juego que más te guste</p>
             </div>
             
             <button className="parent-zone-btn" onClick={() => setShowParentGate(true)}>
-              🔒 Área Padres
+              🔒 Solo Padres
             </button>
           </header>
 
-          {/* Gobi / Copito Interactive Character */}
           <div className="assistant-character-bubble">
-            <button className="avatar-btn" onClick={clickCopito} aria-label="Hablar con Copito">
-              🐼
-            </button>
+            <span className="avatar-btn">🐼</span>
             <div className="bubble-text">
               <p>{copitoSpeech}</p>
               <div className="bubble-tail"></div>
@@ -202,9 +205,10 @@ export default function App() {
               className="module-card card-mouse" 
               onClick={() => handleModuleChange('mouse')}
             >
+              {showHomeFinger && <div className="illiteracy-finger-guide">👇</div>}
               <div className="card-visual">🖱️</div>
-              <h2>Mover y Click</h2>
-              <p>Entrenamiento de Mouse</p>
+              <h2>1. Usar el Mouse</h2>
+              <p>Mueve el ratón y haz click</p>
             </button>
 
             <button 
@@ -212,8 +216,8 @@ export default function App() {
               onClick={() => handleModuleChange('comm')}
             >
               <div className="card-visual">💬</div>
-              <h2>Comunicación</h2>
-              <p>Pictogramas y Habla</p>
+              <h2>2. Hablar con Dibujos</h2>
+              <p>Presiona para escuchar la voz</p>
             </button>
 
             <button 
@@ -221,8 +225,8 @@ export default function App() {
               onClick={() => handleModuleChange('routines')}
             >
               <div className="card-visual">📅</div>
-              <h2>Primero / Después</h2>
-              <p>Rutinas diarias</p>
+              <h2>3. Primero / Después</h2>
+              <p>Aprende tus tareas diarias</p>
             </button>
 
             <button 
@@ -230,8 +234,8 @@ export default function App() {
               onClick={() => handleModuleChange('cognitive')}
             >
               <div className="card-visual">🧠</div>
-              <h2>Juegos</h2>
-              <p>Memoria y Clasificación</p>
+              <h2>4. Juegos de Pensar</h2>
+              <p>Cartas de memoria y clasificar</p>
             </button>
 
             <button 
@@ -239,17 +243,16 @@ export default function App() {
               onClick={() => handleModuleChange('prevocational')}
             >
               <div className="card-visual">💼</div>
-              <h2>Trabajo Digital</h2>
-              <p>Destrezas del computador</p>
+              <h2>5. Trabajo en Computador</h2>
+              <p>Aprende tareas de oficina</p>
             </button>
           </main>
 
-          {/* Sticker Album Shelf (Gamification) */}
           <section className="sticker-shelf-section">
-            <h2>🏆 Tu Álbum de Calcomanías ({stickers.length})</h2>
+            <h2>🏆 Tus Premios ({stickers.length})</h2>
             <div className="sticker-shelf-display">
               {stickers.length === 0 ? (
-                <p className="no-stickers-msg">¡Completa actividades para ganar divertidas calcomanías! 🦄🎈🦖</p>
+                <p className="no-stickers-msg">¡Juega para ganar premios aquí! 🦄🎈🦖</p>
               ) : (
                 <div className="stickers-row">
                   {stickers.map((st, idx) => (
@@ -268,7 +271,7 @@ export default function App() {
           </section>
 
           <footer className="home-footer">
-            <p>Aurora Agent PWA • Diseñado con cariño para el aprendizaje autónomo</p>
+            <p>Diseñado con cariño para Aurora</p>
           </footer>
         </div>
       )}
