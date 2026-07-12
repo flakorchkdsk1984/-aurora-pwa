@@ -11,36 +11,41 @@ import ParentDashboard from './components/ParentDashboard';
 import CelebrationConfetti from './components/CelebrationConfetti';
 
 const STICKER_POOL = [
-  { emoji: '🦄', name: 'unicornio' },
-  { emoji: '🦖', name: 'dinosaurio' },
-  { emoji: '🎈', name: 'globo' },
-  { emoji: '🍦', name: 'helado' },
-  { emoji: '🚀', name: 'cohete' },
-  { emoji: '🧸', name: 'osito' },
+  { emoji: '🦄', name: 'unicornio mágico' },
+  { emoji: '🦖', name: 'dinosaurio verde' },
+  { emoji: '🎈', name: 'globo de colores' },
+  { emoji: '🍦', name: 'helado dulce' },
+  { emoji: '🚀', name: 'cohete espacial' },
+  { emoji: '🧸', name: 'osito de felpa' },
   { emoji: '🎨', name: 'paleta de pintura' },
-  { emoji: '🐱', name: 'gatito' },
-  { emoji: '🍓', name: 'frutilla' },
-  { emoji: '🐬', name: 'delfín' },
-  { emoji: '👑', name: 'corona' },
-  { emoji: '🍩', name: 'dona' }
+  { emoji: '🐱', name: 'gatito tierno' },
+  { emoji: '🍓', name: 'frutilla jugosa' },
+  { emoji: '🐬', name: 'delfín saltarín' },
+  { emoji: '👑', name: 'corona real' },
+  { emoji: '🍩', name: 'dona sabrosa' }
 ];
 
 export default function App() {
   const [activeModule, setActiveModule] = useState('home'); 
   const [settings, setSettings] = useState({
     autoAdapt: true,
-    speechRate: 0.75, // Slower default speed for beginners
+    speechRate: 0.75, 
     overloadReduction: false
   });
   const [showParentGate, setShowParentGate] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   
-  // Gamification & Accessibility States
+  // Gamification: Sticker Book & Shaking Gift Box states
   const [stickers, setStickers] = useState([]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [copitoSpeech, setCopitoSpeech] = useState('¡Hola! Toca un dibujo grande para empezar.');
-  const [lastEarnedSticker, setLastEarnedSticker] = useState(null);
   
+  // Gift Box Opening Minigame
+  const [showGiftBox, setShowGiftBox] = useState(false);
+  const [isBoxOpening, setIsBoxOpening] = useState(false);
+  const [pendingSticker, setPendingSticker] = useState(null);
+  const [revealedSticker, setRevealedSticker] = useState(null);
+
   // Digital Illiteracy Help States
   const [showHomeFinger, setShowHomeFinger] = useState(false);
   const idleTimer = useRef(null);
@@ -50,7 +55,7 @@ export default function App() {
       try {
         await initDB();
         const autoAdapt = await getSetting('autoAdapt', true);
-        const speechRate = await getSetting('speechRate', 0.75); // Slow down speech
+        const speechRate = await getSetting('speechRate', 0.75);
         const overloadReduction = await getSetting('overloadReduction', false);
         setSettings({ autoAdapt, speechRate, overloadReduction });
 
@@ -67,7 +72,6 @@ export default function App() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Initial greeting loop
     speakGreeting();
     resetIdleTimer();
 
@@ -86,13 +90,11 @@ export default function App() {
     clearTimeout(idleTimer.current);
     setShowHomeFinger(false);
 
-    if (activeModule === 'home') {
+    if (activeModule === 'home' && !showGiftBox) {
       idleTimer.current = setTimeout(() => {
-        // Show visual finger helper and repeat voice instructions if user is idle for 8s
         setShowHomeFinger(true);
         speak('¿Sigues ahí? Presiona el primer botón azul para aprender a mover el mouse.', settings.speechRate);
         
-        // Loop prompt every 12 seconds if they stay idle
         idleTimer.current = setInterval(() => {
           speak('Toca el dibujo que tiene la flecha amarilla encima.', settings.speechRate);
         }, 12000);
@@ -125,40 +127,63 @@ export default function App() {
     setActiveModule('dashboard');
   };
 
-  const handleEarnSticker = async () => {
+  // Triggered when any game is completed
+  const handleEarnSticker = () => {
     const randomSticker = STICKER_POOL[Math.floor(Math.random() * STICKER_POOL.length)];
-    const updatedStickers = [...stickers, randomSticker];
-    setStickers(updatedStickers);
-    setLastEarnedSticker(randomSticker);
+    setPendingSticker(randomSticker);
     
-    try {
-      await saveSetting('stickers', updatedStickers);
-    } catch (e) {
-      console.error(e);
-    }
+    // Launch the Gift Box opening modal
+    setShowGiftBox(true);
+    setIsBoxOpening(false);
+    setRevealedSticker(null);
+    
+    speak('¡Sorpresa! ¡Tienes un regalo! Toca la caja de regalo para abrirla.', settings.speechRate);
+  };
 
-    setShowConfetti(true);
-    setCopitoSpeech(`¡Ganaste un ${randomSticker.name}!`);
-    
-    setTimeout(() => {
-      speak(`¡Qué feliz estoy! Ganaste una calcomanía de ${randomSticker.name}.`, settings.speechRate);
+  // Open the box when clicked
+  const openGiftBox = async () => {
+    if (isBoxOpening) return;
+    setIsBoxOpening(true);
+    speak('¡Abriendo!', settings.speechRate);
+
+    // After 1.5 seconds of shaking, reveal the sticker!
+    setTimeout(async () => {
+      setRevealedSticker(pendingSticker);
+      setShowConfetti(true);
+      
+      const updatedStickers = [...stickers, pendingSticker];
+      setStickers(updatedStickers);
+      
+      try {
+        await saveSetting('stickers', updatedStickers);
+      } catch (e) {
+        console.error(e);
+      }
+
+      speak(`¡Felicitaciones! Ganaste un ${pendingSticker.name} de regalo.`, settings.speechRate);
+      setCopitoSpeech(`¡Ganaste un ${pendingSticker.name}!`);
+
+      // Close the award screen after 4 seconds
+      setTimeout(() => {
+        setShowGiftBox(false);
+        setShowConfetti(false);
+        setPendingSticker(null);
+        setRevealedSticker(null);
+        setIsBoxOpening(false);
+      }, 4500);
+
     }, 1500);
-
-    setTimeout(() => {
-      setShowConfetti(false);
-      setLastEarnedSticker(null);
-    }, 4500);
   };
 
   const clickSticker = (sticker) => {
-    speak(`Esta es tu calcomanía de ${sticker.name}`, settings.speechRate);
+    speak(`Tu calcomanía de ${sticker.name}`, settings.speechRate);
     setCopitoSpeech(`¡Ese es un ${sticker.name}!`);
   };
 
   return (
     <div 
       className={`app-shell ${settings.overloadReduction ? 'reduce-motion' : ''}`}
-      onClick={resetIdleTimer} // Any click resets the help prompt timer
+      onClick={resetIdleTimer}
     >
       <CelebrationConfetti active={showConfetti} />
 
@@ -168,12 +193,26 @@ export default function App() {
         </div>
       )}
 
-      {lastEarnedSticker && (
-        <div className="sticker-award-overlay">
-          <div className="sticker-award-card anim-bounce">
-            <span className="award-emoji">{lastEarnedSticker.emoji}</span>
-            <h2>¡Ganaste un premio!</h2>
-            <p>¡Buen trabajo!</p>
+      {/* Interactive Gift Box Opening Screen */}
+      {showGiftBox && (
+        <div className="gift-box-overlay">
+          <div className="gift-box-container">
+            {!revealedSticker ? (
+              <button 
+                className={`gift-box-element ${isBoxOpening ? 'shaking-box' : 'bounce-box'}`}
+                onClick={openGiftBox}
+                aria-label="Abrir caja de regalo"
+              >
+                🎁
+                <div className="gift-prompt-label">¡Toca la caja!</div>
+              </button>
+            ) : (
+              <div className="gift-reveal-card anim-bounce">
+                <span className="gift-reveal-emoji">{revealedSticker.emoji}</span>
+                <h2>¡Ganaste un Premio!</h2>
+                <p>Conseguiste un {revealedSticker.name}</p>
+              </div>
+            )}
           </div>
         </div>
       )}
